@@ -1,0 +1,69 @@
+name: Create Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+jobs:
+  release:
+    name: Build and release archive with changelog
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Get current tag
+        id: get_tag
+        run: echo "tag=${GITHUB_REF##*/}" >> "$GITHUB_OUTPUT"
+
+      - name: Get previous tag
+        id: previous_tag
+        run: |
+          PREV_TAG=$(git describe --tags --abbrev=0 $(git rev-list --tags --skip=1 --max-count=1))
+          echo "previous_tag=$PREV_TAG" >> "$GITHUB_OUTPUT"
+
+      - name: Generate changelog
+        id: changelog
+        run: |
+          echo "Generating changelog between ${{ steps.previous_tag.outputs.previous_tag }} and ${{ steps.get_tag.outputs.tag }}"
+          git log --pretty=format:"- %s (%an)" ${{ steps.previous_tag.outputs.previous_tag }}..${{ steps.get_tag.outputs.tag }} > CHANGELOG.md
+          echo "changelog<<EOF" >> "$GITHUB_OUTPUT"
+          cat CHANGELOG.md >> "$GITHUB_OUTPUT"
+          echo "EOF" >> "$GITHUB_OUTPUT"
+
+      - name: Create archives
+        run: |
+          mkdir -p dist
+          tar -czf dist/ansible-precommit-check-vault.tar.gz --exclude='./.git' .
+          zip -r dist/ansible-precommit-check-vault.zip . -x '*.git*'
+
+      - name: Generate SHA256 checksums
+        run: |
+          sha256sum dist/*.tar.gz dist/*.zip > dist/SHA256SUMS.txt
+          cat dist/SHA256SUMS.txt
+
+      - name: Upload GitHub Release
+        uses: softprops/action-gh-release@v1
+        with:
+          name: Release ${{ steps.get_tag.outputs.tag }}
+          tag_name: ${{ steps.get_tag.outputs.tag }}
+          body: |
+            ## Changes
+
+            ${{ steps.changelog.outputs.changelog }}
+
+            ## SHA256 Checksums
+
+            ```
+            ${{ steps.get_tag.outputs.tag }}
+            $(cat dist/SHA256SUMS.txt)
+            ```
+          files: |
+            dist/ansible-precommit-check-vault.tar.gz
+            dist/ansible-precommit-check-vault.zip
+            dist/SHA256SUMS.txt
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          

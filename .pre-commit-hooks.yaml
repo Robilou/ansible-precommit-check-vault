@@ -1,0 +1,6 @@
+- id: check-vault-encrypted
+  name: Check that vault files are encrypted
+  entry: hooks/check_vault_encrypted.sh
+  language: script
+  files: ^.*vault.*\.ya?ml$
+  types: [yaml]
