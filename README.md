@@ -40,7 +40,7 @@ Then add this hook to your project's `.pre-commit-config.yaml`:
 
 ```yaml
 repos:
-  - repo: https://github.com/<your-username>/ansible-precommit-check-vault
+  - repo: https://github.com/robilou/ansible-precommit-check-vault
     rev: v0.1.0
     hooks:
       - id: check-vault-encrypted
